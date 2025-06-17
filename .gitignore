@@ -16,11 +16,15 @@ ENV/
 *.env.*
 !*.env.example # Keep the example file
 
-# Data (if PDFs are large or sensitive, don't commit them)
-# Consider adding these if your PDFs are not meant for the repo:
-# python_backend/data/input_pdfs/*.pdf
-# python_backend/data/input_pdfs/*.PDF
-# python_backend/data/output_summaries/*
+# Data directories (PDFs and generated files)
+python_backend/data/input_pdfs/*
+python_backend/data/output_summaries/*
+python_backend/data/processed_plaintext/*
+
+# Keep .gitkeep files to preserve directory structure
+!python_backend/data/input_pdfs/.gitkeep
+!python_backend/data/output_summaries/.gitkeep
+!python_backend/data/processed_plaintext/.gitkeep
 
 # IDE
 .vscode/
