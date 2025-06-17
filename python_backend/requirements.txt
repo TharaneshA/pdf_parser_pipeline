@@ -1,0 +1,8 @@
+pymupdf         # PDF processing
+python-dotenv    # For managing API keys securely
+google-generativeai>=0.3.0  # For Gemini AI integration
+requests         # For HTTP requests
+json5            # For better JSON handling
+fastapi         # API server
+uvicorn         # ASGI server
+python-multipart # For file uploads
