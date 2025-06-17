@@ -1,7 +1,8 @@
 import fitz  # PyMuPDF
 import re
 import os
-from typing import Dict, List, Optional
+import pdfplumber
+from typing import Dict, List, Optional, Any, Tuple
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """
@@ -32,6 +33,66 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     except Exception as e:
         print(f"Error processing PDF {pdf_path}: {e}")
         return ""
+
+def extract_tables_from_pdf(pdf_path: str) -> List[Dict[str, Any]]:
+    """
+    Extracts tables from a PDF file using pdfplumber with position information.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        
+    Returns:
+        List[Dict[str, Any]]: List of extracted tables with page number, position and formatted content
+    """
+    if not os.path.exists(pdf_path):
+        print(f"Error: PDF file not found at {pdf_path}")
+        return []
+    
+    tables_with_position = []
+    
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                page_tables = page.extract_tables()
+                
+                for table_num, table in enumerate(page_tables):
+                    if table and len(table) > 0:
+                        # Format the table as a string
+                        table_str = f"\n--- TABLE START ---\n"
+                        
+                        # Calculate column widths for better formatting
+                        col_widths = [max(len(str(row[i])) if i < len(row) else 0 for row in table) for i in range(max(len(row) for row in table))]
+                        
+                        # Format each row
+                        for row in table:
+                            row_str = ""
+                            for i, cell in enumerate(row):
+                                cell_text = str(cell).strip() if cell else ""
+                                row_str += f"{cell_text:{col_widths[i] + 2}}"
+                            table_str += row_str + "\n"
+                        
+                        table_str += "--- TABLE END ---\n"
+                        
+                        # Get table position on page
+                        # Note: pdfplumber tables have bbox attribute (x0, top, x1, bottom)
+                        table_bbox = None
+                        if hasattr(page, 'find_tables') and callable(page.find_tables):
+                            tables_info = page.find_tables()
+                            if table_num < len(tables_info):
+                                table_bbox = tables_info[table_num].bbox
+                        
+                        tables_with_position.append({
+                            "page_num": page_num + 1,
+                            "table_num": table_num + 1,
+                            "content": table_str,
+                            "position": table_bbox  # This will be None if position can't be determined
+                        })
+        
+        return tables_with_position
+        
+    except Exception as e:
+        print(f"Error extracting tables from PDF {pdf_path}: {e}")
+        return []
 
 def clean_extracted_text(text: str) -> str:
     """
@@ -130,7 +191,70 @@ def extract_numerical_data(text: str) -> List[Dict[str, str]]:
     
     return numerical_data
 
-def process_pdf_report(pdf_path: str) -> Dict[str, any]:
+def merge_tables_with_text(text: str, tables: List[Dict[str, Any]]) -> str:
+    """
+    Merges tables with text content at appropriate positions based on page markers.
+    
+    Args:
+        text (str): Raw text content with page markers
+        tables (List[Dict[str, Any]]): List of tables with page numbers
+        
+    Returns:
+        str: Text with tables integrated at appropriate positions
+    """
+    # Group tables by page
+    tables_by_page = {}
+    for table in tables:
+        page_num = table["page_num"]
+        if page_num not in tables_by_page:
+            tables_by_page[page_num] = []
+        tables_by_page[page_num].append(table)
+    
+    # Split text by page markers
+    page_pattern = r'--- Page \d+ ---'
+    page_markers = re.finditer(page_pattern, text)
+    page_positions = [(m.start(), m.group()) for m in page_markers]
+    
+    if not page_positions:
+        # No page markers found, return original text
+        return text
+    
+    # Add end position
+    page_positions.append((len(text), ""))
+    
+    # Build new text with tables inserted
+    result_text = text[:page_positions[0][0]]
+    
+    for i in range(len(page_positions) - 1):
+        current_marker = page_positions[i][1]
+        current_pos = page_positions[i][0]
+        next_pos = page_positions[i+1][0]
+        
+        # Extract page number from marker
+        page_match = re.search(r'\d+', current_marker)
+        if not page_match:
+            continue
+            
+        page_num = int(page_match.group())
+        page_content = text[current_pos:next_pos]
+        
+        # Add page marker
+        result_text += current_marker
+        
+        # Add page content with tables
+        if page_num in tables_by_page:
+            # For simplicity, add tables at the end of the page content
+            # A more sophisticated approach would use table positions to insert at exact locations
+            page_text = page_content[len(current_marker):]
+            for table in tables_by_page[page_num]:
+                page_text += table["content"]
+            result_text += page_text
+        else:
+            result_text += page_content[len(current_marker):]
+    
+    return result_text
+
+def process_pdf_report(pdf_path: str) -> Dict[str, Any]:
     """
     Complete pipeline to process a PDF report.
     
@@ -138,7 +262,7 @@ def process_pdf_report(pdf_path: str) -> Dict[str, any]:
         pdf_path (str): Path to the PDF file
         
     Returns:
-        Dict[str, any]: Processed report data
+        Dict[str, Any]: Processed report data
     """
     print(f"Processing PDF: {pdf_path}")
     
@@ -147,8 +271,14 @@ def process_pdf_report(pdf_path: str) -> Dict[str, any]:
     if not raw_text:
         return {"error": "Failed to extract text from PDF"}
     
-    # Clean text
-    cleaned_text = clean_extracted_text(raw_text)
+    # Extract tables with position information
+    tables = extract_tables_from_pdf(pdf_path)
+    
+    # Merge tables with text at appropriate positions
+    merged_text = merge_tables_with_text(raw_text, tables)
+    
+    # Clean text (after merging tables)
+    cleaned_text = clean_extracted_text(merged_text)
     
     # Identify sections
     sections = identify_key_sections(cleaned_text)
@@ -156,17 +286,25 @@ def process_pdf_report(pdf_path: str) -> Dict[str, any]:
     # Extract numerical data
     numerical_data = extract_numerical_data(cleaned_text)
     
+    # Try to extract title from the text
+    title = "Unknown Report"
+    title_match = re.search(r'^([^\n]+)', cleaned_text)
+    if title_match:
+        title = title_match.group(1).strip()
+    
     # Prepare result
     result = {
-        "source_file": os.path.basename(pdf_path),
+        "filename": os.path.basename(pdf_path),
+        "title": title,
         "raw_text_length": len(raw_text),
         "cleaned_text_length": len(cleaned_text),
         "sections": sections,
         "numerical_data": numerical_data,
+        "tables_count": len(tables),
         "full_text": cleaned_text
     }
     
-    print(f"Extracted {len(sections)} sections and {len(numerical_data)} numerical data points")
+    print(f"Extracted {len(sections)} sections, {len(numerical_data)} numerical data points, and {len(tables)} tables")
     return result
 
 if __name__ == "__main__":
@@ -179,6 +317,7 @@ if __name__ == "__main__":
         print("\nProcessing Result:")
         print(f"Sections found: {list(result.get('sections', {}).keys())}")
         print(f"Numerical data points: {len(result.get('numerical_data', []))}")
+        print(f"Tables extracted: {result.get('tables_count', 0)}")
     else:
         print("Usage: python pdf_parser.py <path_to_pdf>")
         print("Or import this module to use its functions.")

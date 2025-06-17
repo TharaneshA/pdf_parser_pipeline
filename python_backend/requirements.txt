@@ -6,3 +6,4 @@ json5            # For better JSON handling
 fastapi         # API server
 uvicorn         # ASGI server
 python-multipart # For file uploads
+pdfplumber       # For table extraction from PDFs
