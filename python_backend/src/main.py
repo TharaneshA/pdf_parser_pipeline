@@ -1,11 +1,23 @@
 import os
 import sys
 import json
+import logging
+import concurrent.futures
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 # Add the parent directory to sys.path to allow imports from src
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Configure basic logging for main.py to include thread information
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(threadName)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from src.pdf_parser import process_pdf_report
 from src.gemini_summarizer import GeminiSummarizer
@@ -108,18 +120,35 @@ def batch_process_directory(input_dir: str = None, output_dir: str = None) -> Di
     total_tokens = 0
     
     progress = ProgressTracker(len(pdf_files), "Processing PDFs")
+
+    # Use ThreadPoolExecutor for concurrent processing
+    # The process_single_pdf function is I/O bound (file reading, API calls),
+    # so threads are appropriate.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all PDF processing tasks to the executor
+        future_to_pdf = {executor.submit(process_single_pdf, pdf_file, output_dir): pdf_file for pdf_file in pdf_files}
+        
+        for future in concurrent.futures.as_completed(future_to_pdf):
+            pdf_file_path = future_to_pdf[future]
+            try:
+                result = future.result() # Get the result from the completed future
+                results.append(result)
+                
+                if result.get("success", False):
+                    success_count += 1
+                    total_tokens += result.get("tokens_used", 0)
+                    logger.info(f"Successfully processed and summarized: {os.path.basename(pdf_file_path)}")
+                else:
+                    error_count += 1
+                    logger.error(f"Failed to process {os.path.basename(pdf_file_path)}: {result.get('error', 'Unknown error')}")
+            except Exception as exc:
+                error_count += 1
+                logger.error(f"{os.path.basename(pdf_file_path)} generated an exception: {exc}")
+                results.append({"success": False, "error": str(exc), "source_file": os.path.basename(pdf_file_path)})
+            finally:
+                progress.update()
     
-    for pdf_file in pdf_files:
-        result = process_single_pdf(pdf_file, output_dir)
-        results.append(result)
-        
-        if result.get("success", False):
-            success_count += 1
-            total_tokens += result.get("tokens_used", 0)
-        else:
-            error_count += 1
-        
-        progress.update()
+    # progress.finalize() # This was causing an AttributeError, progress bar completes automatically
     
     # Compile statistics
     stats = {
