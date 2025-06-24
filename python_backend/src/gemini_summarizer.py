@@ -18,7 +18,7 @@ class GeminiSummarizer:
         genai.configure(api_key=api_key)
         
         # Set model configuration
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-pro")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
         self.max_tokens = int(os.getenv("MAX_TOKENS", "4096"))
         self.temperature = float(os.getenv("TEMPERATURE", "0.2"))
         
@@ -50,7 +50,7 @@ class GeminiSummarizer:
         # Create a structured prompt
         prompt = f"""You are an expert data analyst for Satori XR, specializing in summarizing technical reports for visualization in XR environments. 
 
-Analyze the following report and create a structured summary in JSON format.
+Analyze the following report and create a structured summary in VALID JSON format.
 
 REPORT TITLE: {title}
 
@@ -79,7 +79,7 @@ REPORT TITLE: {title}
 
 Your task is to create a comprehensive summary of this report in the following JSON format:
 
-```json
+
 {
   "title": "Report Title",
   "summary": "A concise 2-3 sentence overview of the entire report",
@@ -116,7 +116,7 @@ Your task is to create a comprehensive summary of this report in the following J
     }
   ]
 }
-```
+
 
 Ensure your response is ONLY valid JSON without any additional text or explanation. Extract the most important information from the report, focusing on key metrics, trends, and insights that would be valuable in an XR visualization environment.
 """
