@@ -1,19 +1,22 @@
-# Satori XR Report Summarizer
+# PDF Parser Pipeline   
 
-An AI-powered tool for extracting, summarizing, and visualizing key information from PDF reports for XR dashboards.
+An AI-powered backend pipeline for extracting, summarizing, and structuring key information from PDF reports—optimized for integration with visualization tools or downstream applications.
 
 ## Overview
 
-The Satori XR Report Summarizer is designed to process factory and operations reports in PDF format, extract key information, and generate structured summaries optimized for visualization in XR (Extended Reality) environments. The system uses GPT-4 to analyze report content and create insightful summaries that can be displayed on XR dashboards.
+The **PDF Parser Pipeline** is designed to process factory and operations reports in PDF format, extract key information, and generate structured summaries using GPT-4. It provides a modular backend system with support for multiple PDF parsing approaches and is built with FastAPI for RESTful access.
+
+This repository contains only the **backend pipeline**. Future visual or XR integrations should be handled in external or downstream projects.
 
 ## Features
 
-- **PDF Text Extraction**: Extract text content from PDF reports using PyMuPDF
-- **Intelligent Summarization**: Generate structured summaries using GPT-4
-- **Key Metrics Identification**: Automatically identify and extract numerical data and metrics
-- **XR-Ready Output**: Produce JSON output optimized for XR visualization
-- **API Server**: REST API for integration with XR applications
-- **Batch Processing**: Process multiple PDF reports in batch mode
+- **PDF Text Extraction (Main Branch)**: Extracts text using **PyMuPDF** and tables using **pdfplumber**, then combines the outputs.
+- **Alternative PDF Processing (Unstructured Branch)**: Uses the [Unstructured](https://github.com/Unstructured-IO/unstructured) library for unified document parsing optimized for LLMs.
+- **GPT-4 Summarization**: Generates concise and structured report summaries using OpenAI GPT-4.
+- **Key Metrics Identification**: Extracts numerical data and operational KPIs.
+- **Structured Output**: Outputs JSON files designed for easy integration with dashboards or analytics tools.
+- **REST API with FastAPI**: Serve and manage PDF summarization tasks over HTTP.
+- **Batch Mode Support**: Efficiently process multiple PDFs in batch.
 
 ## Project Structure
 
@@ -45,8 +48,8 @@ The Satori XR Report Summarizer is designed to process factory and operations re
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/satori_xr_report_summarizer.git
-   cd satori_xr_report_summarizer
+   git clone https://github.com/TharaneshA/pdf_parser_pipeline.git
+   cd pdf_parser_pipeline
    ```
 
 2. Install Python dependencies:
@@ -130,11 +133,11 @@ The system generates structured JSON summaries with the following format:
 
 ## Future Development
 
-- Unity XR frontend for immersive data visualization
-- Real-time data streaming and updates
-- Multi-document comparison and trend analysis
-- Custom visualization templates for different report types
-- Integration with existing factory management systems
+- Enhanced PDF parsing with hybrid techniques
+- Improved table extraction using layout-aware models
+- Real-time data ingestion and streaming
+- Multi-document comparison and trend summarization
+- Integration with external dashboards or BI tools
 
 ## License
 
@@ -142,6 +145,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- OpenAI for GPT-4
-- PyMuPDF for PDF processing
+- Gemini API
+- PyMuPDF and pdfplumber for PDF parsing
+- Unstructured for document layout extraction (used in the unstructured branch)
 - FastAPI for the REST API framework
