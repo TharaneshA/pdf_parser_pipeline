@@ -1,5 +1,5 @@
-import json
 import logging
+import json
 import google.generativeai as genai
 from src.config import GOOGLE_API_KEY, PROMPT_TEMPLATE
 
@@ -30,18 +30,20 @@ def extract_esg_data(markdown_content: str) -> dict | None:
     try:
         response = model.generate_content(prompt)
         
+        # Log token usage
+        if response.usage_metadata:
+            input_tokens = response.usage_metadata.prompt_token_count
+            output_tokens = response.usage_metadata.candidates_token_count
+            logger.info(f"Gemini API - Input Tokens: {input_tokens}, Output Tokens: {output_tokens}")
+
         # Robustly find and parse the JSON block from the model's response
-        response_text = response.text
+        response_text = response.text.strip()
         
-        # Find the start and end of the JSON object
-        json_start = response_text.find('{')
-        json_end = response_text.rfind('}') + 1
-        
-        if json_start == -1 or json_end == 0:
-            logger.error(f"Could not find a valid JSON object in Gemini's response. Raw response: {response_text}")
+        if not response_text:
+            logger.error("Gemini API returned an empty or whitespace-only response.")
             return None
-            
-        json_string = response_text[json_start:json_end]
+
+        json_string = response_text
         
         logger.info("Received response from Gemini. Parsing JSON...")
         extracted_data = json.loads(json_string)
@@ -49,9 +51,7 @@ def extract_esg_data(markdown_content: str) -> dict | None:
         logger.info("Successfully extracted and parsed data from Gemini.")
         return extracted_data
         
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON from Gemini's response. Error: {e}. Raw text: '{json_string}'")
-        return None
+
     except Exception as e:
         logger.error(f"An unexpected error occurred during Gemini API call. Error: {e}", exc_info=True)
         return None

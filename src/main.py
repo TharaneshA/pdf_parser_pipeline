@@ -7,7 +7,8 @@ import time
 
 from src.parser import parse_pdf_to_markdown
 from src.extractor import extract_esg_data
-from src.utils.file_utils import find_pdfs_in_directory, save_json_output
+# --- IMPORT THE NEW FUNCTION ---
+from src.utils.file_utils import find_pdfs_in_directory, save_json_output, save_markdown_output
 
 # Configure logging for clear, informative console output
 logging.basicConfig(
@@ -17,7 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def process_single_file(pdf_path: Path, output_dir: Path):
+def process_single_file(pdf_path: Path, final_output_dir: Path):
     """Orchestrates the full parsing and extraction pipeline for a single PDF file."""
     logger.info(f"--- Starting pipeline for: {pdf_path.name} ---")
     
@@ -27,14 +28,22 @@ def process_single_file(pdf_path: Path, output_dir: Path):
         logger.error(f"Stopping pipeline for {pdf_path.name} due to parsing failure.")
         return
 
+    # --- NEW INTERMEDIATE STEP ADDED HERE ---
+    # Define the hardcoded path as requested for the intermediate output.
+    # Using pathlib.Path is robust for handling Windows paths.
+    intermediate_output_dir = Path("C:/project/pdf_parser_pipeline/output")
+    logger.info(f"Saving intermediate parsed markdown to specified directory: '{intermediate_output_dir}'")
+    save_markdown_output(markdown_content, intermediate_output_dir, pdf_path.name)
+    
     # Stage 2: Extract structured data using Gemini
+    logger.info("Content saved. Proceeding to send content to Gemini for extraction...")
     extracted_data = extract_esg_data(markdown_content)
     if not extracted_data:
         logger.error(f"Stopping pipeline for {pdf_path.name} due to extraction failure.")
         return
 
-    # Stage 3: Save the output
-    save_json_output(extracted_data, output_dir, pdf_path.name)
+    # Stage 3: Save the final JSON output to the directory specified by the --output argument
+    save_json_output(extracted_data, final_output_dir, pdf_path.name)
     logger.info(f"--- Successfully completed pipeline for: {pdf_path.name} ---")
 
 
@@ -52,8 +61,8 @@ def main():
         "--output",
         "-o",
         type=Path,
-        default=Path("./output"),
-        help="The directory where JSON output files will be saved. Defaults to './output'."
+        default=Path("./final_json_output"), # Changed default to be more descriptive
+        help="The directory where FINAL JSON output files will be saved. Defaults to './final_json_output'."
     )
     parser.add_argument(
         "--batch",

@@ -6,10 +6,6 @@ json5            # For better JSON handling
 fastapi         # API server
 uvicorn         # ASGI server
 python-multipart # For file uploads
-pdfplumber       # For table extraction from PDFs
-
 
 unstructured[local-inference]
-# For hi_res PDF parsing, unstructured needs layout detection models.
-unstructured.pytesseract
-unstructured.paddleocr
+html2text
