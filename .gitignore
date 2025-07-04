@@ -11,6 +11,11 @@ ENV/
 .DS_Store
 *.log
 
+
+
+# Output files
+output/
+
 # Secrets (IMPORTANT!)
 .env
 *.env.*
