@@ -77,46 +77,44 @@ REPORT TITLE: {title}
         # Add output format instructions
         prompt += """
 
-Your task is to create a comprehensive summary of this report in the following JSON format:
+You are an expert automotive marketing analyst and 3D technical artist for Satori XR.
+Your task is to analyze a car brochure's text and map its key selling points to a specific list of parts from a 3D model.
 
+**CONTEXT:**
+1.  **Brochure Text:** The following is the full text extracted from a product brochure.
+    ---
+    {brochure_text}
+    ---
 
-{
-  "title": "Report Title",
-  "summary": "A concise 2-3 sentence overview of the entire report",
-  "key_findings": [
-    "Finding 1",
-    "Finding 2",
-    "Finding 3"
-  ],
-  "sections": [
-    {
-      "name": "Section Name",
-      "summary": "Brief summary of this section"
-    }
-  ],
-  "metrics": [
-    {
-      "name": "Metric Name",
-      "value": "Numerical value",
-      "unit": "Unit of measurement",
-      "context": "Brief explanation of what this metric means",
-      "trend": "increasing/decreasing/stable"
-    }
-  ],
-  "recommendations": [
-    "Recommendation 1",
-    "Recommendation 2"
-  ],
-  "visualization_suggestions": [
-    {
-      "type": "chart_type",
-      "title": "Suggested visualization title",
-      "description": "What data should be visualized and why",
-      "data_points": ["relevant metric names"]
-    }
+2.  **3D Model Part Names:** The 3D model contains the following named parts. You MUST map features to one of these exact names.
+    ```json
+    {json.dumps(part_names, indent=2)}
+    ```
+
+**INSTRUCTIONS:**
+1.  Read the entire brochure text to understand the car's main features.
+2.  Identify up to 8 of the most compelling and marketable features described.
+3.  For each feature, determine which of the provided "3D Model Part Names" is the most logical anchor point for a hotspot.
+4.  For each feature, create a short, catchy `feature_title` and a compelling one-sentence `marketing_summary`.
+5.  You MUST respond with ONLY a valid JSON object. The root of the object must be a key named `hotspots` which contains a list of the feature objects you identified.
+6.  If a feature cannot be reasonably mapped to any part in the list, omit it from the output.
+
+**REQUIRED JSON OUTPUT FORMAT:**
+```json
+{{
+  "hotspots": [
+    {{
+      "feature_title": "Example: Panoramic Sunroof",
+      "marketing_summary": "Example: Enjoy breathtaking views and an open-air feeling with the expansive, edge-to-edge panoramic sunroof.",
+      "matched_part_name": "roof_panel"
+    }},
+    {{
+      "feature_title": "Example: Diamond-Cut Alloy Wheels",
+      "marketing_summary": "Example: The stylish 17-inch diamond-cut alloy wheels provide a premium and sporty stance on the road.",
+      "matched_part_name": "wheel_front_left"
+    }}
   ]
-}
-
+}}```
 
 Ensure your response is ONLY valid JSON without any additional text or explanation. Extract the most important information from the report, focusing on key metrics, trends, and insights that would be valuable in an XR visualization environment.
 """
